@@ -1,0 +1,1204 @@
+
+AI Company — Canonical Architecture
+
+Status: CanonicalRepository: /mnt/e/AI_Company1Architecture Role: Constitutional ReferenceImplementation Status: FoundationVersion: 1.0
+
+1. Purpose
+
+AI Company is a local-first autonomous software organization.
+
+Its purpose is to transform company objectives into controlled,observable, resource-aware execution.
+
+AI Company is not merely a collection of AI agents.
+
+It is an organizational system composed of:
+
+objectives
+
+decisions
+
+tasks
+
+agents
+
+capabilities
+
+physical resources
+
+execution
+
+memory
+
+experience
+
+trust
+
+learning
+
+workflow coordination
+
+The system must remain coherent even when individual agents,external services, models, or workflows change.
+
+The architecture therefore distinguishes between:
+
+company meaning
+
+company decisions
+
+executable work
+
+execution mechanisms
+
+external infrastructure
+
+No external tool is allowed to become the owner of AI Company meaning.
+
+2. Constitutional Principle
+
+The central architectural principle is:
+
+AI Company owns its own semantics.
+
+External systems may provide:
+
+intelligence
+
+workflow execution
+
+transport
+
+orchestration
+
+storage
+
+communication
+
+computation
+
+but they do not define:
+
+what a company objective means
+
+what a task means
+
+what an agent means
+
+what a capability means
+
+what successful execution means
+
+what trust means
+
+what experience means
+
+what the canonical company state is
+
+These concepts belong to AI Company.
+
+3. Architectural Reality
+
+AI Company exists simultaneously in several realities.
+
+Company Intent
+      |
+      v
+Decision Reality
+      |
+      v
+Work Reality
+      |
+      v
+Execution Reality
+      |
+      v
+Physical Reality
+
+The system must never reason as if execution were unlimited.
+
+Every company decision eventually encounters physical constraints.
+
+Those constraints include:
+
+CPU
+
+RAM
+
+GPU
+
+storage
+
+network
+
+execution availability
+
+agent availability
+
+external service availability
+
+Therefore:
+
+AI Company is resource-aware by architecture, not by optional optimization.
+
+4. Canonical System Model
+
+The canonical high-level architecture is:
+
+                        HUMAN OWNER
+                             |
+                             v
+                     COMPANY OBJECTIVES
+                             |
+                             v
+                     STRATEGIC DECISION
+                             |
+                             v
+                         TASK SYSTEM
+                             |
+                             v
+                    EXECUTION DECISION
+                             |
+              +--------------+--------------+
+              |                             |
+              v                             v
+         AGENT SYSTEM                 RESOURCE SYSTEM
+              |                             |
+              +--------------+--------------+
+                             |
+                             v
+                     EXECUTION READINESS
+                             |
+                             v
+                      EXECUTION SYSTEM
+                             |
+                             v
+                     OBSERVATION / RESULT
+                             |
+              +--------------+--------------+
+              |                             |
+              v                             v
+            MEMORY                       LEARNING
+              |                             |
+              +--------------+--------------+
+                             |
+                             v
+                            TRUST
+
+This model defines direction of responsibility.
+
+It does not imply that every operation is synchronous.
+
+5. The Four Canonical Layers
+
+AI Company is divided into four primary architectural layers.
+
+02_core
+    |
+    | defines company meaning
+    v
+03_runtime
+    |
+    | composes and operates the company
+    v
+04_integrations
+    |
+    | connects external systems
+    v
+06_tools
+
+Tests and documentation exist outside the production dependency path.
+
+6. Core Layer
+
+The Core owns canonical domain meaning.
+
+The Core contains the stable concepts that define AI Company.
+
+These include:
+
+Company Objective
+
+Strategic Priority
+
+Task
+
+Agent
+
+Capability
+
+Resource Requirement
+
+Resource State
+
+Execution Readiness
+
+Execution Result
+
+Memory Record
+
+Experience Record
+
+Trust Record
+
+The Core must not depend on:
+
+Weft
+
+LLM providers
+
+HTTP clients
+
+databases
+
+external workflow engines
+
+external agent platforms
+
+The Core must remain meaningful if every integration is removed.
+
+7. Runtime Layer
+
+The Runtime composes canonical Core components.
+
+The Runtime owns:
+
+lifecycle composition
+
+dependency construction
+
+runtime services
+
+orchestration boundaries
+
+execution coordination
+
+company operation
+
+The Runtime may depend on Core.
+
+Core may never depend on Runtime.
+
+8. Integration Layer
+
+Integrations connect AI Company to external systems.
+
+Examples include:
+
+Weft
+
+LLM providers
+
+external agents
+
+databases
+
+file systems
+
+communication systems
+
+web services
+
+Integrations translate between:
+
+External Contract
+        |
+        v
+AI Company Canonical Contract
+
+An integration must not redefine canonical domain models.
+
+9. Tools Layer
+
+Tools contain utilities used for:
+
+diagnostics
+
+repository inspection
+
+development support
+
+reporting
+
+migration support
+
+Tools do not own company semantics.
+
+Production Runtime must not depend on development tools.
+
+10. Canonical Dependency Direction
+
+Dependencies must move inward.
+
+Tools
+   |
+Integrations
+   |
+Runtime
+   |
+Core
+
+Allowed:
+
+Runtime -> Core
+Integration -> Core
+Integration -> Runtime contracts where explicitly defined
+Tools -> all layers for inspection
+
+Forbidden:
+
+Core -> Runtime
+Core -> Integration
+Core -> Tools
+
+Runtime -> Tools
+
+No dependency may reverse architectural ownership.
+
+11. Company Objective
+
+A Company Objective represents desired organizational intent.
+
+An objective is not executable by itself.
+
+An objective may produce:
+
+strategic decisions
+
+projects
+
+tasks
+
+resource requirements
+
+The Objective layer owns intent.
+
+It does not own execution.
+
+12. Strategic Decision
+
+A Strategic Decision transforms objectives into organizational direction.
+
+It determines:
+
+what should be pursued
+
+relative importance
+
+strategic priority
+
+expected value
+
+constraints
+
+Strategic decisions do not execute work.
+
+13. Canonical Task
+
+A Task is the canonical unit of company work.
+
+There must be exactly one canonical company Task model.
+
+A Task must not have competing parallel definitions in differentexecution subsystems.
+
+The canonical task represents:
+
+Identity
++
+Intent
++
+Requirements
++
+Constraints
++
+Lifecycle State
++
+Execution Context
++
+Result
+
+A Task may be translated into an external execution contract,but the external contract is not a second canonical Task.
+
+14. Task Ownership
+
+Task lifecycle ownership must be explicit.
+
+The canonical task lifecycle authority owns:
+
+state transitions
+
+transition validation
+
+terminal states
+
+No queue, pipeline, agent, integration, or workflow engine may mutatecanonical task state directly.
+
+All transitions must pass through the canonical lifecycle authority.
+
+15. Task Queue
+
+A Task Queue owns pending work selection.
+
+It may:
+
+accept canonical tasks
+
+order canonical tasks
+
+return eligible tasks
+
+It must not:
+
+redefine tasks
+
+execute tasks
+
+mutate task lifecycle state
+
+make strategic decisions
+
+16. Agent
+
+An Agent represents an available execution capability.
+
+An Agent is not a Task.
+
+An Agent may be:
+
+local
+
+external
+
+AI-based
+
+software-based
+
+human
+
+hybrid
+
+The canonical Agent model describes:
+
+identity
+
+capabilities
+
+availability
+
+requirements
+
+experience
+
+trust context
+
+Execution implementation details belong outside the canonicalAgent identity.
+
+17. Capability
+
+A Capability describes what can potentially be performed.
+
+Capability is not execution.
+
+Capability availability may depend on:
+
+agents
+
+hardware
+
+software
+
+external services
+
+The Capability System describes availability.
+
+It does not:
+
+execute tasks
+
+schedule tasks
+
+make strategic decisions
+
+18. Physical Hardware
+
+AI Company operates inside finite physical reality.
+
+Hardware is explicitly modeled.
+
+Hardware observation includes, where available:
+
+CPU capacity
+
+CPU utilization
+
+RAM total
+
+RAM available
+
+GPU presence
+
+GPU capacity
+
+storage capacity
+
+storage availability
+
+operating system information
+
+Hardware observation is descriptive.
+
+It does not make execution decisions.
+
+19. Resource State
+
+Resource State represents the currently usable execution capacity.
+
+Resource State is derived from physical observation.
+
+Examples include:
+
+Hardware Observation
+        |
+        v
+Resource State
+        |
+        v
+Execution Readiness
+
+Resource State may include:
+
+available CPU
+
+available RAM
+
+available GPU
+
+available storage
+
+current system pressure
+
+Resource State does not select agents.
+
+20. Execution Readiness
+
+Execution Readiness determines whether a proposed execution iscurrently possible.
+
+It combines:
+
+task requirements
+
+agent requirements
+
+capability requirements
+
+resource state
+
+availability constraints
+
+The output is a readiness decision.
+
+Examples:
+
+READY
+
+DEGRADED
+
+BLOCKED
+
+UNAVAILABLE
+
+Readiness is not strategy.
+
+Readiness answers:
+
+Can this execution happen now under current conditions?
+
+21. Decision System
+
+The Decision System determines what should happen.
+
+It operates on:
+
+objectives
+
+strategic priorities
+
+tasks
+
+capabilities
+
+experience
+
+trust
+
+resources
+
+Decision and execution remain separate.
+
+Decision
+   |
+   v
+Execution Authorization
+   |
+   v
+Execution
+
+A successful decision does not imply that execution is currently ready.
+
+22. Agent Selection
+
+Agent Selection determines the most appropriate agent for a task.
+
+Selection may consider:
+
+capability fit
+
+experience
+
+trust
+
+availability
+
+hardware compatibility
+
+execution cost
+
+risk
+
+Agent selection does not execute the task.
+
+Selection produces a selection decision.
+
+23. Execution System
+
+The Execution System performs authorized work.
+
+Its responsibilities include:
+
+receiving executable work
+
+receiving an execution decision
+
+invoking the selected executor
+
+collecting results
+
+reporting execution outcome
+
+The Execution System must not:
+
+redefine strategic priorities
+
+redefine canonical tasks
+
+redefine trust
+
+redefine memory
+
+24. Execution Pipeline
+
+An Execution Pipeline defines ordered execution stages.
+
+Pipeline stages may perform:
+
+analysis
+
+planning
+
+generation
+
+validation
+
+application
+
+testing
+
+A Pipeline performs operations.
+
+The Pipeline does not own canonical task lifecycle transitions.
+
+Pipeline outcomes are reported to the canonical lifecycle authority.
+
+25. Weft — The Nervous System
+
+Weft is an external operational nervous system.
+
+Weft may provide:
+
+workflow transport
+
+distributed orchestration
+
+node execution
+
+triggers
+
+asynchronous coordination
+
+workflow visibility
+
+Weft does not own:
+
+company identity
+
+company objectives
+
+canonical tasks
+
+canonical agents
+
+canonical trust
+
+canonical experience
+
+strategic decisions
+
+The relationship is:
+
+AI COMPANY
+    |
+    | canonical execution intent
+    v
+WEFT
+    |
+    | workflow transport / coordination
+    v
+EXECUTION
+
+AI Company must remain conceptually valid without Weft.
+
+Weft is replaceable infrastructure.
+
+26. Memory
+
+Memory stores organizational knowledge.
+
+Memory may contain:
+
+observations
+
+execution history
+
+outcomes
+
+decisions
+
+contextual knowledge
+
+Memory does not itself decide.
+
+Memory provides evidence to decision systems.
+
+27. Experience
+
+Experience represents structured learning from previous execution.
+
+Experience may influence:
+
+agent selection
+
+task evaluation
+
+planning
+
+future execution decisions
+
+Experience is evidence.
+
+Experience is not execution authority.
+
+28. Trust
+
+Trust represents confidence derived from evidence.
+
+Trust may be influenced by:
+
+successful execution
+
+failed execution
+
+historical reliability
+
+experience
+
+observed trends
+
+Trust must not be manually mutated by arbitrary execution components.
+
+Trust updates must pass through a canonical trust authority.
+
+29. Learning
+
+Learning transforms outcomes into improved organizational knowledge.
+
+The canonical direction is:
+
+Execution
+    |
+    v
+Observation
+    |
+    v
+Memory
+    |
+    v
+Experience
+    |
+    v
+Trust / Learning Signals
+    |
+    v
+Future Decisions
+
+Learning does not bypass canonical decision boundaries.
+
+30. Canonical Execution Flow
+
+The canonical execution flow is:
+
+Company Objective
+        |
+        v
+Strategic Decision
+        |
+        v
+Canonical Task
+        |
+        v
+Task Evaluation
+        |
+        v
+Agent Selection
+        |
+        v
+Resource Evaluation
+        |
+        v
+Execution Readiness
+        |
+        v
+Execution Authorization
+        |
+        v
+Execution System
+        |
+        v
+Execution Pipeline
+        |
+        v
+Execution Result
+        |
+        v
+Canonical Task Lifecycle Update
+        |
+        v
+Memory / Experience / Trust
+
+No component may silently bypass this chain.
+
+31. Composition Root
+
+The Composition Root is the single location where productiondependencies are constructed and connected.
+
+The Composition Root owns:
+
+concrete dependency construction
+
+integration selection
+
+runtime configuration
+
+system startup
+
+Domain models must not construct integrations directly.
+
+Core components must receive dependencies through explicit contracts.
+
+32. Single Source of Truth Rule
+
+Every canonical concept must have one authoritative definition.
+
+Examples:
+
+Concept                     Canonical Authority
+------------------------------------------------
+Task                        Canonical Task Model
+Task State                  Task Lifecycle System
+Agent                       Canonical Agent Model
+Capability                  Capability System
+Hardware Observation        Hardware Observer
+Resource State              Resource State System
+Execution Readiness         Readiness System
+Trust                       Trust System
+Experience                  Experience System
+Company Runtime             Composition Root
+
+Parallel models require explicit architectural justification.
+
+33. Adapter Rule
+
+External or legacy representations may exist only as adapters.
+
+External Model
+      |
+      v
+Adapter
+      |
+      v
+Canonical Model
+
+The adapter must not create a competing domain authority.
+
+34. No Hidden Ownership
+
+Every mutable state must have an identified owner.
+
+Examples:
+
+Task State
+    -> Task Lifecycle Authority
+
+Trust
+    -> Trust Authority
+
+Resource State
+    -> Resource State System
+
+Execution Queue
+    -> Queue
+
+Runtime Construction
+    -> Composition Root
+
+If ownership cannot be identified, the architecture is incomplete.
+
+35. No Parallel Canonical Paths
+
+AI Company must not maintain two competing production paths for thesame responsibility.
+
+Examples of forbidden parallelism:
+
+Two canonical task models
+
+Two task lifecycle systems
+
+Two worker execution paths
+
+Two agent selection authorities
+
+Two runtime composition roots
+
+Alternative implementations are allowed only behind one canonicalcontract.
+
+36. Local-First Principle
+
+AI Company is local-first.
+
+The canonical company state must not require permanent cloudavailability.
+
+External services may amplify the system.
+
+They must not be the sole owner of company identity or fundamentalcompany state.
+
+The system must degrade explicitly when external dependencies areunavailable.
+
+37. Finite Resource Principle
+
+No task is assumed executable merely because it is desirable.
+
+Execution requires physical feasibility.
+
+Desired Work
+      +
+Available Capability
+      +
+Available Resources
+      +
+Execution Readiness
+      =
+Possible Execution
+
+A strategically valuable task may remain blocked.
+
+Blocked execution is a valid organizational state.
+
+38. External Agent Principle
+
+External agents are integrations.
+
+They are represented internally through canonical Agent contracts.
+
+An external provider must not redefine:
+
+agent identity
+
+task identity
+
+trust
+
+experience
+
+Provider-specific representations remain inside integration adapters.
+
+39. Human Personnel Principle
+
+Human personnel can participate as Agents.
+
+The architecture treats human and software execution through commonorganizational concepts while allowing different execution mechanisms.
+
+A human Agent is not forced into an AI-specific implementation model.
+
+40. Observability Principle
+
+Every important organizational transition should be observable.
+
+Important observations include:
+
+decisions
+
+task transitions
+
+agent selection
+
+readiness failures
+
+execution outcomes
+
+resource constraints
+
+Observability records what happened.
+
+Observability does not own the underlying state.
+
+41. Failure Principle
+
+Failure is a first-class system outcome.
+
+The system must distinguish between:
+
+unavailable
+
+blocked
+
+failed
+
+degraded
+
+successful
+
+Failure must produce information that can later influence:
+
+memory
+
+experience
+
+trust
+
+learning
+
+42. Architectural Invariants
+
+The following invariants are mandatory.
+
+Core has no dependency on integrations.
+
+Every canonical concept has one authoritative model.
+
+Every mutable state has an identified owner.
+
+Tasks have one canonical lifecycle authority.
+
+Agent selection is separate from execution.
+
+Decision is separate from execution.
+
+Resource observation is separate from resource decision.
+
+Weft is infrastructure, not company identity.
+
+External agents are integrations behind canonical contracts.
+
+Hardware limitations are explicit architectural inputs.
+
+Learning consumes outcomes; it does not directly execute work.
+
+Memory provides evidence; it does not automatically decide.
+
+Experience provides evidence; it does not automatically execute.
+
+Trust has a canonical update authority.
+
+Runtime composition occurs through one Composition Root.
+
+Alternative implementations may exist behind canonical interfaces,but must not create competing canonical ownership.
+
+43. Architectural Change Rule
+
+This document is the canonical architectural reference.
+
+Changes require explicit reasoning.
+
+Before changing the architecture, the following questions must beanswered:
+
+1. Which canonical responsibility changes?
+
+2. Which ownership boundary changes?
+
+3. Which dependency direction changes?
+
+4. Does the change create a parallel authority?
+
+5. Does the change violate an architectural invariant?
+
+6. Can the same goal be achieved without changing the architecture?
+
+Implementation convenience alone is not sufficient reason to changethe architecture.
+
+44. Implementation Rule
+
+Before creating a production module, the implementation must define:
+
+Responsibility
+Canonical Owner
+Inputs
+Outputs
+Dependencies
+Forbidden Dependencies
+Mutable State
+State Owner
+
+No production module should be created before these answers exist.
+
+45. Definition of Architectural Success
+
+AI Company is architecturally successful when:
+
+new functionality has an obvious ownership location
+
+no competing canonical model exists
+
+dependency direction remains predictable
+
+external systems remain replaceable
+
+physical resource limitations influence execution explicitly
+
+decisions remain separate from execution
+
+learning remains grounded in observed outcomes
+
+the system can evolve without semantic fragmentation
+
+46. Final Constitutional Rule
+
+Implementation serves architecture.
+
+Architecture must not be continuously rewritten to justifyimplementation shortcuts.
+
+When code conflicts with this document:
+
+Architecture
+    wins.
+
+The implementation must be corrected unless an explicit,well-justified architectural change is approved.
+
+END OF CANONICAL ARCHITECTURE
+
