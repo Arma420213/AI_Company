@@ -1,0 +1,74 @@
+﻿# ============================================================
+# AI COMPANY 1.0 - GIT IGNORE
+# Generated files, caches, local environments and secrets only.
+# Canonical source code, architecture, documentation and tests
+# remain version-controlled.
+# ============================================================
+# ------------------------------------------------------------
+# Python
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+# Python tooling / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+# ------------------------------------------------------------
+# Node / frontend dependencies and generated output
+# ------------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.yarn-cache/
+# Common frontend build output
+dist/
+build/
+.next/
+.nuxt/
+.vite/
+# ------------------------------------------------------------
+# IDE / editor metadata
+# ------------------------------------------------------------
+.vscode/
+.idea/
+*.iml
+# ------------------------------------------------------------
+# Operating system files
+# ------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini
+# ------------------------------------------------------------
+# Logs / temporary files
+# ------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+# ------------------------------------------------------------
+# Local environment / secrets
+# ------------------------------------------------------------
+.env
+.env.*
+!.env.example
+# ------------------------------------------------------------
+# Local databases / runtime-generated state
+# ------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+# ------------------------------------------------------------
+# Backup / editor-generated files
+# ------------------------------------------------------------
+*.bak
+*.backup
+*~
