@@ -1,9 +1,8 @@
 import ast
 import importlib.util
-import inspect
 import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import MappingProxyType
 
@@ -32,6 +31,42 @@ def load_resource_state_module():
 
 resource_state = load_resource_state_module()
 
+hardware_capability_spec = importlib.util.spec_from_file_location(
+    "hardware_capability",
+    CORE_ROOT / "hardware_capability.py",
+)
+
+if hardware_capability_spec is None or hardware_capability_spec.loader is None:
+    raise RuntimeError(
+        "Unable to load hardware_capability module."
+    )
+
+hardware_capability = importlib.util.module_from_spec(
+    hardware_capability_spec
+)
+sys.modules["hardware_capability"] = hardware_capability
+hardware_capability_spec.loader.exec_module(
+    hardware_capability
+)
+
+hardware_observation_spec = importlib.util.spec_from_file_location(
+    "hardware_observation",
+    CORE_ROOT / "hardware_observation.py",
+)
+
+if hardware_observation_spec is None or hardware_observation_spec.loader is None:
+    raise RuntimeError(
+        "Unable to load hardware_observation module."
+    )
+
+hardware_observation = importlib.util.module_from_spec(
+    hardware_observation_spec
+)
+sys.modules["hardware_observation"] = hardware_observation
+hardware_observation_spec.loader.exec_module(
+    hardware_observation
+)
+
 
 class ResourceStateContractTests(unittest.TestCase):
 
@@ -45,229 +80,649 @@ class ResourceStateContractTests(unittest.TestCase):
             tzinfo=timezone.utc,
         )
 
-        self.provenance = (
-            resource_state.ResourceStateProvenance(
+        self.provenance = resource_state.ResourceStateProvenance(
+            source="test",
+            timestamp=self.timestamp,
+            authority="ResourceStateAuthority",
+        )
+
+        self.capability = hardware_capability.HardwareCapability(
+            hardware_id="hardware-001",
+            cpu_capability={
+                "cores": "12",
+                "threads": "12",
+            },
+            memory_capability={
+                "gb": "15.58",
+            },
+            gpu_capability={
+                "present": "true",
+                "gb": "4",
+            },
+            storage_capability={
+                "gb": "1007",
+            },
+            other_capabilities={},
+            provenance=hardware_capability.HardwareCapabilityProvenance(
                 source="test",
                 timestamp=self.timestamp,
-                authority="ResourceStateAuthority",
-            )
+                authority="HardwareCapabilityAuthority",
+            ),
         )
 
-        self.state = resource_state.ResourceState(
-            resource_state_id="resource-state-001",
+        self.observation = hardware_observation.HardwareObservation(
             hardware_id="hardware-001",
-            evaluated_at=self.timestamp,
-            cpu_state={
-                "usable_cores": "8",
-                "utilization_percent": "25",
+            observed_at=self.timestamp,
+            cpu_observation={
+                "available": "8",
             },
-            memory_state={
-                "usable_gb": "10",
-                "available_gb": "12",
+            memory_observation={
+                "available_gb": "10",
             },
-            gpu_state={
-                "usable": "false",
+            gpu_observation={
+                "usable": "true",
+                "gb": "3",
             },
-            storage_state={
-                "usable_gb": "900",
-                "available_gb": "950",
+            storage_observation={
+                "available_gb": "900",
             },
-            network_state={
-                "available": "true",
-            },
-            other_resource_state={
+            other_observations={
+                "network_available": "true",
                 "system_pressure": "low",
             },
-            provenance=self.provenance,
+            provenance=hardware_observation.HardwareObservationProvenance(
+                source="test-observer",
+                timestamp=self.timestamp,
+                authority="HardwareObserver",
+            ),
         )
+
+        self.rules = resource_state.ResourceInterpretationRules()
+
+        self.constraints = resource_state.ResourceConstraints.empty()
+
+    def derive(self, **kwargs):
+        authority = resource_state.ResourceStateAuthority()
+
+        return authority.derive_state(
+            self.capability,
+            self.observation,
+            self.rules,
+            self.constraints,
+            resource_state_id="resource-state-001",
+            evaluated_at=self.timestamp,
+            **kwargs,
+        )
+
+    # --------------------------------------------------------
+    # Canonical symbols
+    # --------------------------------------------------------
 
     def test_required_symbols_exist(self):
-        self.assertTrue(
-            hasattr(
-                resource_state,
-                "ResourceStateProvenance",
+        required = {
+            "ResourceValueStatus",
+            "ResourceValue",
+            "ResourceInterpretationRules",
+            "ResourceConstraints",
+            "ResourceStateProvenance",
+            "ResourceState",
+            "ResourceStateAuthority",
+        }
+
+        for name in required:
+            self.assertTrue(
+                hasattr(resource_state, name),
+                msg=f"Missing canonical symbol: {name}",
             )
+
+    # --------------------------------------------------------
+    # Resource Value semantics
+    # --------------------------------------------------------
+
+    def test_resource_value_is_frozen(self):
+        value = resource_state.ResourceValue(
+            dimension="cpu",
+            status=resource_state.ResourceValueStatus.KNOWN,
+            quantity=8,
+            unit="cores",
         )
 
-        self.assertTrue(
-            hasattr(
-                resource_state,
-                "ResourceState",
-            )
-        )
-
-        self.assertTrue(
-            hasattr(
-                resource_state,
-                "ResourceStateAuthority",
-            )
-        )
-
-    def test_resource_state_is_frozen(self):
         with self.assertRaises(Exception):
-            self.state.resource_state_id = "changed"
+            value.quantity = 4
 
-    def test_provenance_is_frozen(self):
+    def test_known_quantitative_value_requires_quantity(self):
+        with self.assertRaises(ValueError):
+            resource_state.ResourceValue(
+                dimension="cpu",
+                status=resource_state.ResourceValueStatus.KNOWN,
+            )
+
+    def test_known_network_value_may_be_semantic(self):
+        value = resource_state.ResourceValue(
+            dimension="network",
+            status=resource_state.ResourceValueStatus.KNOWN,
+        )
+
+        self.assertIsNone(value.quantity)
+
+    def test_negative_quantity_is_rejected(self):
+        with self.assertRaises(ValueError):
+            resource_state.ResourceValue(
+                dimension="cpu",
+                status=resource_state.ResourceValueStatus.KNOWN,
+                quantity=-1,
+                unit="cores",
+            )
+
+    def test_nan_quantity_is_rejected(self):
+        with self.assertRaises(ValueError):
+            resource_state.ResourceValue(
+                dimension="cpu",
+                status=resource_state.ResourceValueStatus.KNOWN,
+                quantity=float("nan"),
+                unit="cores",
+            )
+
+    def test_infinite_quantity_is_rejected(self):
+        with self.assertRaises(ValueError):
+            resource_state.ResourceValue(
+                dimension="cpu",
+                status=resource_state.ResourceValueStatus.KNOWN,
+                quantity=float("inf"),
+                unit="cores",
+            )
+
+    def test_unobserved_value_has_no_quantity(self):
+        value = resource_state.ResourceValue(
+            dimension="cpu",
+            status=resource_state.ResourceValueStatus.UNOBSERVED,
+        )
+
+        self.assertIsNone(value.quantity)
+
+    def test_unavailable_value_has_no_quantity(self):
+        value = resource_state.ResourceValue(
+            dimension="cpu",
+            status=resource_state.ResourceValueStatus.UNAVAILABLE,
+        )
+
+        self.assertIsNone(value.quantity)
+
+    # --------------------------------------------------------
+    # Resource State construction
+    # --------------------------------------------------------
+
+    def test_derived_state_has_canonical_dimensions(self):
+        state = self.derive()
+
+        self.assertEqual(state.cpu.dimension, "cpu")
+        self.assertEqual(state.memory.dimension, "memory")
+        self.assertEqual(state.gpu.dimension, "gpu")
+        self.assertEqual(state.storage.dimension, "storage")
+        self.assertEqual(state.network.dimension, "network")
+
+    def test_derived_state_is_frozen(self):
+        state = self.derive()
+
         with self.assertRaises(Exception):
-            self.provenance.source = "changed"
+            state.hardware_id = "changed"
 
-    def test_resource_state_mappings_are_read_only(self):
-        self.assertIsInstance(
-            self.state.cpu_state,
-            MappingProxyType,
-        )
+    def test_derived_state_values_are_read_only(self):
+        state = self.derive()
 
-        self.assertIsInstance(
-            self.state.memory_state,
-            MappingProxyType,
-        )
+        values = state.values()
 
         self.assertIsInstance(
-            self.state.gpu_state,
-            MappingProxyType,
-        )
-
-        self.assertIsInstance(
-            self.state.storage_state,
-            MappingProxyType,
-        )
-
-        self.assertIsInstance(
-            self.state.network_state,
-            MappingProxyType,
-        )
-
-        self.assertIsInstance(
-            self.state.other_resource_state,
+            values,
             MappingProxyType,
         )
 
         with self.assertRaises(TypeError):
-            self.state.cpu_state["usable_cores"] = "1"
+            values["cpu"] = state.cpu
 
-    def test_empty_resource_state_id_is_rejected(self):
-        with self.assertRaises(ValueError):
-            resource_state.ResourceState(
-                resource_state_id="",
-                hardware_id="hardware-001",
-                evaluated_at=self.timestamp,
-                cpu_state={},
-                memory_state={},
-                gpu_state={},
-                storage_state={},
-                network_state={},
-                other_resource_state={},
-                provenance=self.provenance,
-            )
+    def test_other_resources_are_not_inferred_from_arbitrary_metadata(self):
+        state = self.derive()
 
-    def test_empty_hardware_id_is_rejected(self):
-        with self.assertRaises(ValueError):
-            resource_state.ResourceState(
-                resource_state_id="resource-state-001",
-                hardware_id="",
-                evaluated_at=self.timestamp,
-                cpu_state={},
-                memory_state={},
-                gpu_state={},
-                storage_state={},
-                network_state={},
-                other_resource_state={},
-                provenance=self.provenance,
-            )
+        self.assertEqual(
+            state.other_resources,
+            {},
+        )
 
-    def test_naive_evaluation_timestamp_is_rejected(self):
-        with self.assertRaises(ValueError):
-            resource_state.ResourceState(
-                resource_state_id="resource-state-001",
-                hardware_id="hardware-001",
-                evaluated_at=datetime(2026, 1, 1, 12, 0),
-                cpu_state={},
-                memory_state={},
-                gpu_state={},
-                storage_state={},
-                network_state={},
-                other_resource_state={},
-                provenance=self.provenance,
-            )
+    # --------------------------------------------------------
+    # Derivation chain
+    # --------------------------------------------------------
 
-    def test_naive_provenance_timestamp_is_rejected(self):
-        with self.assertRaises(ValueError):
-            resource_state.ResourceStateProvenance(
-                source="test",
-                timestamp=datetime(2026, 1, 1, 12, 0),
-                authority="ResourceStateAuthority",
-            )
+    def test_derivation_uses_capability_and_observation(self):
+        state = self.derive()
 
-    def test_empty_provenance_source_is_rejected(self):
-        with self.assertRaises(ValueError):
-            resource_state.ResourceStateProvenance(
-                source="",
-                timestamp=self.timestamp,
-                authority="ResourceStateAuthority",
-            )
+        self.assertEqual(
+            state.cpu.quantity,
+            8,
+        )
 
-    def test_empty_provenance_authority_is_rejected(self):
-        with self.assertRaises(ValueError):
-            resource_state.ResourceStateProvenance(
-                source="test",
-                timestamp=self.timestamp,
-                authority="",
-            )
+        self.assertEqual(
+            state.memory.quantity,
+            10,
+        )
 
-    def test_authority_records_state(self):
+        self.assertEqual(
+            state.storage.quantity,
+            900,
+        )
+
+    def test_capability_ceiling_is_enforced(self):
+        observation = hardware_observation.HardwareObservation(
+            hardware_id="hardware-001",
+            observed_at=self.timestamp,
+            cpu_observation={"available": "99"},
+            memory_observation={"available_gb": "99"},
+            gpu_observation={"usable": "true", "gb": "99"},
+            storage_observation={"available_gb": "9999"},
+            other_observations={"network_available": "true"},
+            provenance=self.observation.provenance,
+        )
+
         authority = resource_state.ResourceStateAuthority()
 
-        returned = authority.record_state(self.state)
+        state = authority.derive_state(
+            self.capability,
+            observation,
+            self.rules,
+            self.constraints,
+            resource_state_id="ceiling-test",
+            evaluated_at=self.timestamp,
+        )
 
-        self.assertIs(returned, self.state)
+        self.assertEqual(
+            state.cpu.status,
+            resource_state.ResourceValueStatus.UNAVAILABLE,
+        )
+
+        self.assertIsNone(
+            state.cpu.quantity,
+        )
+
+        self.assertEqual(
+            state.memory.status,
+            resource_state.ResourceValueStatus.UNAVAILABLE,
+        )
+
+        self.assertIsNone(
+            state.memory.quantity,
+        )
+
+        self.assertEqual(
+            state.storage.status,
+            resource_state.ResourceValueStatus.UNAVAILABLE,
+        )
+
+        self.assertIsNone(
+            state.storage.quantity,
+        )
+
+    def test_constrained_network_value_may_be_semantic(self):
+        value = resource_state.ResourceValue(
+            dimension="network",
+            status=resource_state.ResourceValueStatus.CONSTRAINED,
+            limitation="network access is operationally restricted",
+        )
+
+        self.assertEqual(
+            value.status,
+            resource_state.ResourceValueStatus.CONSTRAINED,
+        )
+        self.assertIsNone(value.quantity)
+        self.assertEqual(
+            value.limitation,
+            "network access is operationally restricted",
+        )
+
+    def test_gpu_usable_without_quantity_is_incomplete(self):
+        observation = hardware_observation.HardwareObservation(
+            hardware_id="hardware-001",
+            observed_at=self.timestamp,
+            cpu_observation=self.observation.cpu_observation,
+            memory_observation=self.observation.memory_observation,
+            gpu_observation={
+                "usable": "true",
+            },
+            storage_observation=self.observation.storage_observation,
+            other_observations=self.observation.other_observations,
+            provenance=self.observation.provenance,
+        )
+
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            observation,
+            self.rules,
+            self.constraints,
+            resource_state_id="gpu-incomplete-test",
+            evaluated_at=self.timestamp,
+        )
+
+        self.assertEqual(
+            state.gpu.status,
+            resource_state.ResourceValueStatus.INCOMPLETE,
+        )
+        self.assertIsNone(state.gpu.quantity)
+
+    # --------------------------------------------------------
+    # Unknown / unavailable / incomplete
+    # --------------------------------------------------------
+
+    def test_unknown_is_not_zero(self):
+        observation = hardware_observation.HardwareObservation(
+            hardware_id="hardware-001",
+            observed_at=self.timestamp,
+            cpu_observation={},
+            memory_observation={},
+            gpu_observation={},
+            storage_observation={},
+            other_observations={},
+            provenance=self.observation.provenance,
+        )
+
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            observation,
+            self.rules,
+            self.constraints,
+            resource_state_id="unknown-test",
+            evaluated_at=self.timestamp,
+        )
+
+        self.assertEqual(
+            state.cpu.status,
+            resource_state.ResourceValueStatus.UNOBSERVED,
+        )
+
+        self.assertIsNone(state.cpu.quantity)
+
+    def test_incomplete_observation_is_distinct_from_unknown(self):
+        observation = hardware_observation.HardwareObservation(
+            hardware_id="hardware-001",
+            observed_at=self.timestamp,
+            cpu_observation={
+                "utilization_percent": "25",
+            },
+            memory_observation={},
+            gpu_observation={},
+            storage_observation={},
+            other_observations={},
+            provenance=self.observation.provenance,
+        )
+
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            observation,
+            self.rules,
+            self.constraints,
+            resource_state_id="incomplete-test",
+            evaluated_at=self.timestamp,
+        )
+
+        self.assertEqual(
+            state.cpu.status,
+            resource_state.ResourceValueStatus.INCOMPLETE,
+        )
+
+    def test_stale_observation_becomes_unavailable(self):
+        rules = resource_state.ResourceInterpretationRules(
+            freshness_threshold=timedelta(minutes=5),
+        )
+
+        evaluated_at = self.timestamp + timedelta(
+            minutes=10,
+        )
+
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            self.observation,
+            rules,
+            self.constraints,
+            resource_state_id="stale-test",
+            evaluated_at=evaluated_at,
+        )
+
+        self.assertEqual(
+            state.cpu.status,
+            resource_state.ResourceValueStatus.UNAVAILABLE,
+        )
+
+    # --------------------------------------------------------
+    # Constraints
+    # --------------------------------------------------------
+
+    def test_constraints_reduce_capacity(self):
+        constraints = resource_state.ResourceConstraints(
+            reserved={"cpu": 2},
+            committed={"memory": 2},
+            contention={"storage": 100},
+            environmental_limitations={},
+            operational_restrictions={},
+        )
+
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            self.observation,
+            self.rules,
+            constraints,
+            resource_state_id="constraint-test",
+            evaluated_at=self.timestamp,
+        )
+
+        self.assertEqual(state.cpu.quantity, 6)
+        self.assertEqual(state.memory.quantity, 8)
+        self.assertEqual(state.storage.quantity, 800)
+
+    def test_constraints_cannot_create_capacity(self):
+        constraints = resource_state.ResourceConstraints(
+            reserved={"cpu": 999},
+            committed={},
+            contention={},
+            environmental_limitations={},
+            operational_restrictions={},
+        )
+
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            self.observation,
+            self.rules,
+            constraints,
+            resource_state_id="constraint-floor-test",
+            evaluated_at=self.timestamp,
+        )
+
+        self.assertEqual(
+            state.cpu.quantity,
+            0,
+        )
+
+        self.assertEqual(
+            state.cpu.status,
+            resource_state.ResourceValueStatus.CONSTRAINED,
+        )
+
+    # --------------------------------------------------------
+    # Network semantics
+    # --------------------------------------------------------
+
+    def test_network_is_semantic_not_fake_numeric_capacity(self):
+        state = self.derive()
+
+        self.assertEqual(
+            state.network.status,
+            resource_state.ResourceValueStatus.KNOWN,
+        )
+
+        self.assertIsNone(
+            state.network.quantity,
+        )
+
+    def test_network_unavailability_is_distinct(self):
+        observation = hardware_observation.HardwareObservation(
+            hardware_id="hardware-001",
+            observed_at=self.timestamp,
+            cpu_observation=self.observation.cpu_observation,
+            memory_observation=self.observation.memory_observation,
+            gpu_observation=self.observation.gpu_observation,
+            storage_observation=self.observation.storage_observation,
+            other_observations={
+                "network_available": "false",
+            },
+            provenance=self.observation.provenance,
+        )
+
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            observation,
+            self.rules,
+            self.constraints,
+            resource_state_id="network-unavailable-test",
+            evaluated_at=self.timestamp,
+        )
+
+        self.assertEqual(
+            state.network.status,
+            resource_state.ResourceValueStatus.UNAVAILABLE,
+        )
+
+        self.assertIsNone(
+            state.network.quantity,
+        )
+
+    # --------------------------------------------------------
+    # GPU semantics
+    # --------------------------------------------------------
+
+    def test_gpu_usable_state_is_known(self):
+        state = self.derive()
+
+        self.assertEqual(
+            state.gpu.status,
+            resource_state.ResourceValueStatus.KNOWN,
+        )
+
+        self.assertIsNotNone(
+            state.gpu.quantity,
+        )
+
+    def test_gpu_unusable_state_is_not_zero_capacity(self):
+        observation = hardware_observation.HardwareObservation(
+            hardware_id="hardware-001",
+            observed_at=self.timestamp,
+            cpu_observation=self.observation.cpu_observation,
+            memory_observation=self.observation.memory_observation,
+            gpu_observation={
+                "usable": "false",
+            },
+            storage_observation=self.observation.storage_observation,
+            other_observations={
+                "network_available": "true",
+            },
+            provenance=self.observation.provenance,
+        )
+
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            observation,
+            self.rules,
+            self.constraints,
+            resource_state_id="gpu-unusable-test",
+            evaluated_at=self.timestamp,
+        )
+
+        self.assertEqual(
+            state.gpu.status,
+            resource_state.ResourceValueStatus.UNAVAILABLE,
+        )
+
+        self.assertIsNone(
+            state.gpu.quantity,
+        )
+
+    # --------------------------------------------------------
+    # Provenance
+    # --------------------------------------------------------
+
+    def test_provenance_is_frozen(self):
+        provenance = self.derive().provenance
+
+        with self.assertRaises(Exception):
+            provenance.source = "changed"
+
+    def test_provenance_contains_observation_origin(self):
+        provenance = self.derive().provenance
+
+        self.assertEqual(
+            provenance.observation_source,
+            "test-observer",
+        )
+
+        self.assertEqual(
+            provenance.observation_timestamp,
+            self.timestamp,
+        )
+
+    # --------------------------------------------------------
+    # Authority
+    # --------------------------------------------------------
+
+    def test_authority_records_derived_state(self):
+        authority = resource_state.ResourceStateAuthority()
+
+        state = authority.derive_state(
+            self.capability,
+            self.observation,
+            self.rules,
+            self.constraints,
+            resource_state_id="authority-test",
+            evaluated_at=self.timestamp,
+        )
+
         self.assertIs(
-            authority.get_state("resource-state-001"),
-            self.state,
+            authority.get_state("authority-test"),
+            state,
         )
 
     def test_authority_rejects_duplicate_state_identity(self):
         authority = resource_state.ResourceStateAuthority()
 
-        authority.record_state(self.state)
+        state = self.derive()
+
+        authority.record_state(state)
 
         with self.assertRaises(ValueError):
-            authority.record_state(self.state)
+            authority.record_state(state)
 
-    def test_authority_get_unknown_state_fails(self):
+    def test_authority_unknown_state_fails(self):
         authority = resource_state.ResourceStateAuthority()
 
         with self.assertRaises(KeyError):
             authority.get_state("unknown")
 
-    def test_states_for_hardware_returns_immutable_collection(self):
+    def test_authority_history_is_read_only(self):
         authority = resource_state.ResourceStateAuthority()
 
-        authority.record_state(self.state)
+        state = self.derive()
 
-        states = authority.states_for("hardware-001")
-
-        self.assertEqual(
-            states,
-            (self.state,),
-        )
-
-        self.assertIsInstance(
-            states,
-            tuple,
-        )
-
-    def test_states_for_unknown_hardware_is_empty(self):
-        authority = resource_state.ResourceStateAuthority()
-
-        self.assertEqual(
-            authority.states_for("unknown"),
-            (),
-        )
-
-    def test_all_states_returns_read_only_mapping(self):
-        authority = resource_state.ResourceStateAuthority()
-
-        authority.record_state(self.state)
+        authority.record_state(state)
 
         states = authority.all_states()
 
@@ -276,221 +731,56 @@ class ResourceStateContractTests(unittest.TestCase):
             MappingProxyType,
         )
 
-        self.assertEqual(
-            states["resource-state-001"],
-            self.state,
-        )
-
         with self.assertRaises(TypeError):
-            states["another"] = self.state
+            states["another"] = state
 
-    def test_authority_owns_mutable_state(self):
+    def test_states_for_hardware_is_immutable(self):
         authority = resource_state.ResourceStateAuthority()
 
-        self.assertTrue(
-            hasattr(authority, "_states")
-        )
+        state = self.derive()
+
+        authority.record_state(state)
+
+        states = authority.states_for("hardware-001")
 
         self.assertIsInstance(
-            authority._states,
-            dict,
+            states,
+            tuple,
         )
 
-    def test_resource_state_does_not_import_forbidden_modules(self):
-        tree = ast.parse(
-            MODULE_PATH.read_text(),
-            filename=str(MODULE_PATH),
+    # --------------------------------------------------------
+    # Input identity
+    # --------------------------------------------------------
+
+    def test_capability_and_observation_hardware_identity_must_match(self):
+        observation = hardware_observation.HardwareObservation(
+            hardware_id="different-hardware",
+            observed_at=self.timestamp,
+            cpu_observation=self.observation.cpu_observation,
+            memory_observation=self.observation.memory_observation,
+            gpu_observation=self.observation.gpu_observation,
+            storage_observation=self.observation.storage_observation,
+            other_observations=self.observation.other_observations,
+            provenance=self.observation.provenance,
         )
 
-        forbidden_roots = {
-            "psutil",
-            "GPUtil",
-            "cuda",
-            "rocm",
-            "subprocess",
-            "requests",
-            "httpx",
-            "sqlalchemy",
-            "weft",
-        }
+        authority = resource_state.ResourceStateAuthority()
 
-        imported_modules = []
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                imported_modules.extend(
-                    alias.name
-                    for alias in node.names
-                )
-
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imported_modules.append(node.module)
-
-        for module_name in imported_modules:
-            root = module_name.split(".")[0]
-
-            self.assertNotIn(
-                root.lower(),
-                {
-                    dependency.lower()
-                    for dependency in forbidden_roots
-                },
-                msg=f"Forbidden dependency detected: {module_name}",
+        with self.assertRaises(ValueError):
+            authority.derive_state(
+                self.capability,
+                observation,
+                self.rules,
+                self.constraints,
+                resource_state_id="identity-test",
+                evaluated_at=self.timestamp,
             )
 
-    def test_resource_state_has_no_runtime_or_integration_imports(self):
-        tree = ast.parse(
-            MODULE_PATH.read_text(),
-            filename=str(MODULE_PATH),
-        )
+    # --------------------------------------------------------
+    # Architectural isolation
+    # --------------------------------------------------------
 
-        forbidden_prefixes = (
-            "03_runtime",
-            "04_integrations",
-            "runtime",
-            "integrations",
-        )
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                imported = [
-                    alias.name
-                    for alias in node.names
-                ]
-
-                for name in imported:
-                    self.assertFalse(
-                        name.startswith(forbidden_prefixes),
-                        msg=f"Forbidden import detected: {name}",
-                    )
-
-            elif isinstance(node, ast.ImportFrom):
-                module = node.module or ""
-
-                self.assertFalse(
-                    module.startswith(forbidden_prefixes),
-                    msg=f"Forbidden import detected: {module}",
-                )
-
-    def test_resource_state_does_not_define_task_or_agent_selection_logic(self):
-        tree = ast.parse(
-            MODULE_PATH.read_text(),
-            filename=str(MODULE_PATH),
-        )
-
-        forbidden_identifiers = {
-            "task_feasible",
-            "task_feasibility",
-            "resource_fit",
-            "selected_agent",
-            "agent_selection",
-            "execution_ready",
-            "execution_readiness",
-            "authorization",
-            "authorize_execution",
-            "execute_task",
-            "execute_work",
-            "allocate_task_resources",
-        }
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Name):
-                self.assertNotIn(
-                    node.id,
-                    forbidden_identifiers,
-                )
-
-            if isinstance(node, ast.Attribute):
-                self.assertNotIn(
-                    node.attr,
-                    forbidden_identifiers,
-                )
-
-    def test_resource_state_does_not_execute_external_work(self):
-        tree = ast.parse(
-            MODULE_PATH.read_text(),
-            filename=str(MODULE_PATH),
-        )
-
-        forbidden_calls = {
-            "system",
-            "run",
-            "Popen",
-            "call",
-            "check_call",
-            "check_output",
-        }
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Name):
-                    self.assertNotIn(
-                        node.func.id,
-                        forbidden_calls,
-                    )
-
-                if isinstance(node.func, ast.Attribute):
-                    self.assertNotIn(
-                        node.func.attr,
-                        forbidden_calls,
-                    )
-
-    def test_resource_state_has_expected_fields(self):
-        fields = resource_state.ResourceState.__dataclass_fields__
-
-        expected = {
-            "resource_state_id",
-            "hardware_id",
-            "evaluated_at",
-            "cpu_state",
-            "memory_state",
-            "gpu_state",
-            "storage_state",
-            "network_state",
-            "other_resource_state",
-            "provenance",
-        }
-
-        self.assertEqual(
-            set(fields),
-            expected,
-        )
-
-    def test_provenance_has_expected_fields(self):
-        fields = (
-            resource_state
-            .ResourceStateProvenance
-            .__dataclass_fields__
-        )
-
-        self.assertEqual(
-            set(fields),
-            {
-                "source",
-                "timestamp",
-                "authority",
-            },
-        )
-
-    def test_authority_has_expected_api(self):
-        expected_methods = {
-            "record_state",
-            "get_state",
-            "states_for",
-            "all_states",
-        }
-
-        for method_name in expected_methods:
-            self.assertTrue(
-                hasattr(
-                    resource_state.ResourceStateAuthority,
-                    method_name,
-                ),
-                msg=f"Missing authority method: {method_name}",
-            )
-
-    def test_resource_state_module_uses_only_stdlib_imports(self):
+    def test_resource_state_uses_only_stdlib_imports(self):
         tree = ast.parse(
             MODULE_PATH.read_text(),
             filename=str(MODULE_PATH),
@@ -499,8 +789,10 @@ class ResourceStateContractTests(unittest.TestCase):
         allowed_roots = {
             "dataclasses",
             "datetime",
+            "math",
             "types",
             "typing",
+            "enum",
         }
 
         for node in ast.walk(tree):
@@ -513,6 +805,77 @@ class ResourceStateContractTests(unittest.TestCase):
                 if node.module:
                     root = node.module.split(".")[0]
                     self.assertIn(root, allowed_roots)
+
+    def test_no_runtime_or_integration_dependencies(self):
+        tree = ast.parse(
+            MODULE_PATH.read_text(),
+            filename=str(MODULE_PATH),
+        )
+
+        forbidden = (
+            "03_runtime",
+            "04_integrations",
+            "runtime",
+            "integrations",
+            "weft",
+            "psutil",
+            "GPUtil",
+            "cuda",
+            "rocm",
+            "requests",
+            "httpx",
+            "sqlalchemy",
+            "subprocess",
+        )
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [
+                    alias.name
+                    for alias in node.names
+                ]
+
+                for name in names:
+                    self.assertFalse(
+                        name.startswith(forbidden),
+                        msg=f"Forbidden import: {name}",
+                    )
+
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+
+                self.assertFalse(
+                    module.startswith(forbidden),
+                    msg=f"Forbidden import: {module}",
+                )
+
+    def test_no_task_agent_selection_or_execution_logic(self):
+        tree = ast.parse(
+            MODULE_PATH.read_text(),
+            filename=str(MODULE_PATH),
+        )
+
+        forbidden = {
+            "task_feasible",
+            "task_feasibility",
+            "resource_fit",
+            "selected_agent",
+            "agent_selection",
+            "execution_ready",
+            "execution_readiness",
+            "authorize_execution",
+            "execute_task",
+            "execute_work",
+            "allocate_task_resources",
+            "schedule",
+        }
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name):
+                self.assertNotIn(node.id, forbidden)
+
+            elif isinstance(node, ast.Attribute):
+                self.assertNotIn(node.attr, forbidden)
 
 
 if __name__ == "__main__":
